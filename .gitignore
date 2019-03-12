@@ -328,3 +328,5 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+/10. EntityFramework Code-First - Exercise/P01_HospitalDatabase.Data/Config.cs
+/10. EntityFramework Code-First - Exercise/P03_SalesDatabase.Data/Config.cs
