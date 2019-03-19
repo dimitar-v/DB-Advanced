@@ -6,6 +6,8 @@
     using System;
     using System.Linq;
     using System.Text;
+    using Microsoft.EntityFrameworkCore;
+    using System.Globalization;
 
     public class UserInfoCommand : ICommand
     {
@@ -20,7 +22,12 @@
         {
             var userId = int.Parse(args[0]);
 
-            var user = context.Users.FirstOrDefault(u => u.UserId == userId);
+            var user = context.Users
+                .Include(u => u.PaymentMethods)
+                    .ThenInclude(pm => pm.BankAccount)
+                .Include(u => u.PaymentMethods)
+                    .ThenInclude(pm => pm.CreditCard)
+                .FirstOrDefault(u => u.UserId == userId);
 
             if (user == null)
             {
@@ -28,38 +35,25 @@
             }
 
             var sb = new StringBuilder();
-
+                        
             sb.AppendLine($"User: {user.FirstName} {user.LastName}");
-            var pmBankAccounts = context.PaymentMethods
-                .Where(pm => pm.UserId == userId && pm.BankAccountId != null)
-                .ToArray();
-
             sb.AppendLine("Bank Accounts:");
-            foreach (var pm in pmBankAccounts)
-            {
-                var ba = context.BankAccounts
-                    .FirstOrDefault(b => b.BankAccountId == pm.BankAccountId);
-
-                sb.AppendLine($"--ID: {ba.BankAccountId}");
-                sb.AppendLine($"--- Balance: {ba.Balance:F2}");
-                sb.AppendLine($"--- Bank: {ba.BankName}");
-                sb.AppendLine($"--- SWIFT: {ba.SWIFT}");
+            foreach (var pm in user.PaymentMethods.Where(pm => pm.Type == PaymentType.BankAccount))
+            {            
+                sb.AppendLine($"--ID: {pm.BankAccount.BankAccountId}");
+                sb.AppendLine($"--- Balance: {pm.BankAccount.Balance:F2}");
+                sb.AppendLine($"--- Bank: {pm.BankAccount.BankName}");
+                sb.AppendLine($"--- SWIFT: {pm.BankAccount.SWIFT}");
             }
 
-            var pmCreditCards = context.PaymentMethods
-                .Where(pm => pm.UserId == userId && pm.CreditCardId != null)
-                .ToArray();
             sb.AppendLine("Credit Cards:");
-            foreach (var pm in pmCreditCards)
+            foreach (var pm in user.PaymentMethods.Where(pm => pm.Type == PaymentType.CreditCard))
             {
-                var cc = context.CreditCards
-                    .FirstOrDefault(c => c.CreditCardId == pm.CreditCardId);
-
                 sb.AppendLine($"--ID: {pm.CreditCardId}");
-                sb.AppendLine($"--- Limit: {cc.Limit:F2}");
-                sb.AppendLine($"--- Money Owed: {cc.MoneyOwed:F2}");
-                sb.AppendLine($"--- Limit Left: {cc.LimitLeft:F2}");
-                sb.AppendLine($"--- Expiration Date: {cc.ExpirationDate.ToString("yyyy/MM")}");
+                sb.AppendLine($"--- Limit: {pm.CreditCard.Limit:F2}");
+                sb.AppendLine($"--- Money Owed: {pm.CreditCard.MoneyOwed:F2}");
+                sb.AppendLine($"--- Limit Left: {pm.CreditCard.LimitLeft:F2}");
+                sb.AppendLine($"--- Expiration Date: {pm.CreditCard.ExpirationDate.ToString("yyyy/MM", DateTimeFormatInfo.InvariantInfo)}");
             }
 
             return sb.ToString().Trim();
